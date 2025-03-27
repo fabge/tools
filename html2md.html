@@ -7,6 +7,28 @@
     <script src="https://unpkg.com/defuddle@latest/dist/index.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
     <style>
+        :root {
+            /* Light mode variables */
+            --background-color: #fffcf1;
+            --text-color: #000000;
+            --border-color: #ddd;
+            --button-color: #000000;
+            --button-text: #fffcf1;
+            --textarea-bg: #f5f2e6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode variables */
+                --background-color: #181a1b;
+                --text-color: #fffcf1;
+                --border-color: #3a3e40;
+                --button-color: #000000;
+                --button-text: #fffcf1;
+                --textarea-bg: #2b2a32;
+            }
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -21,6 +43,8 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.5;
+            background-color: var(--background-color);
+            color: var(--text-color);
         }
 
         .container {
@@ -55,35 +79,44 @@
         textarea {
             flex: 1;
             padding: 1rem;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 0.375rem;
             font-family: monospace;
             font-size: 0.875rem;
             resize: none;
             min-height: 0;
+            background-color: var(--textarea-bg);
+            color: var(--text-color);
         }
 
         button {
             padding: 0.5rem 1rem;
-            background-color: #4CAF50;
-            color: white;
+            background-color: var(--button-color);
+            color: var(--button-text);
             border: none;
             border-radius: 0.375rem;
             cursor: pointer;
             font-size: 0.875rem;
+            transition: opacity 0.2s ease;
         }
 
-        .url-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 0.375rem;
-            font-family: monospace;
+        button:hover {
+            opacity: 0.7;
         }
 
         button:disabled {
             opacity: 0.7;
             cursor: not-allowed;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-family: monospace;
+            background-color: var(--textarea-bg);
+            color: var(--text-color);
         }
     </style>
 </head>
@@ -98,7 +131,7 @@
 
         <div class="main-container">
             <div class="column">
-                <h3>Input:</h3>
+                <h3>Input</h3>
                 <input type="url" id="urlInput" placeholder="Enter URL" class="url-input">
                 <button onclick="fetchAndConvert()">Fetch & Convert</button>
                 <textarea id="htmlInput" placeholder="or paste your HTML here"></textarea>
@@ -106,8 +139,8 @@
             </div>
 
             <div class="column">
-                <h3>Markdown Output:</h3>
-                <textarea id="markdownOutput" readonly placeholder="Your markdown will appear here"></textarea>
+                <h3>Output</h3>
+                <textarea id="markdownOutput" placeholder="Your markdown will appear here"></textarea>
                 <button onclick="copyToClipboard(this)">Copy to Clipboard</button>
             </div>
         </div>
@@ -120,11 +153,11 @@
 
             const originalText = button.textContent;
             button.textContent = 'Copied!';
-            button.style.backgroundColor = '#45a049';
+            button.disabled = true;
 
             setTimeout(() => {
                 button.textContent = originalText;
-                button.style.backgroundColor = '#4CAF50';
+                button.disabled = false;
             }, 1500);
         }
 
