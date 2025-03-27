@@ -6,52 +6,106 @@
     <title>HTML to Markdown Converter</title>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 0 20px;
             font-family: Arial, sans-serif;
+            line-height: 1.5;
         }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+        }
+
         textarea {
-            width: 100%;
-            min-height: 200px;
-            margin: 10px 0;
-            padding: 10px;
+            flex: 1;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 0.375rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            resize: none;
+            min-height: 0;
         }
+
         button {
-            padding: 10px 20px;
+            padding: 0.5rem 1rem;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 0.375rem;
             cursor: pointer;
+            font-size: 0.875rem;
         }
-        button:hover {
-            background-color: #45a049;
+
+        .url-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 0.375rem;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <h1>HTML to Markdown Converter</h1>
+    <div class="container">
+        <header>
+            <h1>HTML to Markdown Converter</h1>
+            <p id="description">
+                A simple tool to convert HTML to Markdown - either paste HTML directly or fetch from a URL.
+            </p>
+        </header>
 
-    <p id="description">
-        A simple tool to convert HTML to Markdown - either paste HTML directly or fetch from a URL.
-    </p>
+        <div class="main-container">
+            <div class="column">
+                <h3>Input:</h3>
+                <input type="url" id="urlInput" placeholder="Enter URL" class="url-input">
+                <button onclick="fetchAndConvert()">Fetch & Convert</button>
+                <textarea id="htmlInput" placeholder="or paste your HTML here"></textarea>
+                <button onclick="convertToMarkdown()">Convert to Markdown</button>
+            </div>
 
-    <div style="margin-bottom: 20px;">
-        <h2>URL Input (optional):</h2>
-        <input type="url" id="urlInput" placeholder="Enter URL" style="width: 70%; padding: 8px;">
-        <button onclick="fetchAndConvert()">Fetch & Convert</button>
+            <div class="column">
+                <h3>Markdown Output:</h3>
+                <textarea id="markdownOutput" readonly placeholder="Your markdown will appear here"></textarea>
+                <button onclick="copyToClipboard(this)">Copy to Clipboard</button>
+            </div>
+        </div>
     </div>
-
-    <h2>HTML Input:</h2>
-    <textarea id="htmlInput" placeholder="Paste your HTML here"></textarea>
-
-    <button onclick="convertToMarkdown()">Convert to Markdown</button>
-
-    <h2>Markdown Output:</h2>
-    <textarea id="markdownOutput" readonly placeholder="Your markdown will appear here"></textarea>
-    <button onclick="copyToClipboard(this)">Copy to Clipboard</button>
 
     <script>
         async function copyToClipboard(button) {
