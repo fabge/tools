@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML to Markdown Converter</title>
+    <script src="https://unpkg.com/defuddle@latest/dist/index.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
     <style>
         * {
@@ -136,8 +137,12 @@
 
         function convertToMarkdown() {
             const htmlInput = document.getElementById('htmlInput').value;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlInput, 'text/html');
+            const defuddle = new Defuddle(doc);
+            const result = defuddle.parse();
             const turndownService = new TurndownService();
-            const markdown = turndownService.turndown(htmlInput);
+            const markdown = turndownService.turndown(result.content);
             document.getElementById('markdownOutput').value = markdown;
         }
     </script>
