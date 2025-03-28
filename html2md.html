@@ -6,6 +6,11 @@
     <title>HTML to Markdown Converter</title>
     <script defer src="https://unpkg.com/defuddle@latest/dist/index.js"></script>
     <script defer src="https://unpkg.com/turndown/dist/turndown.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+
     <style>
         :root {
             /* Light mode variables */
@@ -118,6 +123,27 @@
             background-color: var(--textarea-bg);
             color: var(--text-color);
         }
+
+        .markdown-wrapper {
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background-color: var(--textarea-bg);
+            font-family: monospace;
+        }
+
+        .markdown-wrapper code {
+            white-space: pre-wrap;
+            background: transparent !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .hljs {
+                background: transparent !important;
+                color: var(--text-color);
+            }
+        }
     </style>
 </head>
 <body>
@@ -140,7 +166,9 @@
 
             <div class="column">
                 <h3>Output</h3>
-                <textarea id="markdownOutput" placeholder="Your markdown will appear here"></textarea>
+                <div class="markdown-wrapper">
+                    <pre><code class="language-markdown" id="markdownOutput"></code></pre>
+                </div>
                 <button onclick="copyToClipboard(this)">Copy to Clipboard</button>
             </div>
         </div>
@@ -148,7 +176,7 @@
 
     <script>
         async function copyToClipboard(button) {
-            const markdown = document.getElementById('markdownOutput').value;
+            const markdown = document.getElementById('markdownOutput').textContent;
             await navigator.clipboard.writeText(markdown);
 
             const originalText = button.textContent;
@@ -187,9 +215,16 @@
             const doc = parser.parseFromString(htmlInput, 'text/html');
             const defuddle = new Defuddle(doc);
             const result = defuddle.parse();
-            const turndownService = new TurndownService();
+
+            const turndownService = new TurndownService({
+                headingStyle: 'atx'
+            });
+
             const markdown = turndownService.turndown(result.content);
-            document.getElementById('markdownOutput').value = markdown;
+
+            const markdownOutput = document.getElementById('markdownOutput');
+            markdownOutput.textContent = markdown;
+            hljs.highlightElement(markdownOutput);
 
             button.disabled = false;
             button.textContent = 'Convert to Markdown';
