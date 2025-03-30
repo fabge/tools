@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html><head>
+<html>
+<head>
     <title>Social Media Card Cropper</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <style>
         :root {
             /* Light mode variables */
@@ -25,50 +27,125 @@
             }
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
             background: var(--background-color);
             color: var(--text-color);
         }
+
         .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .controls {
             background: var(--container-bg);
-            padding: 20px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .preview-container {
+            background: var(--container-bg);
+            padding: 16px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
+
+        .preview-container.empty {
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            opacity: 0.5;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: calc(100% - 100px);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            margin: auto;
+        }
+
+        .drop-zone {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .img-container {
+            flex: 1;
+            min-height: 300px;
+            max-height: calc(100vh - 400px);
+            position: relative;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #image {
+            display: block;
+            max-height: 100%;
+            max-width: 100%;
+        }
+
         .drop-zone {
             border: 2px dashed var(--border-color);
             border-radius: 4px;
             padding: 40px 20px;
             text-align: center;
-            margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
         .drop-zone:hover {
             border-color: var(--text-color);
-        }
-        .drop-zone.dragover {
-            border-color: #0066cc;
-            background: #e6f2ff;
-        }
-        .img-container {
-            max-width: 100%;
-            margin-bottom: 20px;
-        }
-        #image {
-            display: block;
-            max-width: 100%;
-        }
-        .preview-container {
-            margin-top: 20px;
-            padding: 16px;
-            background: var(--container-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
         }
         #preview {
             width: 100%;
@@ -102,13 +179,7 @@
             opacity: 0.8;
         }
         .hidden {
-            display: none;
-        }
-        .controls {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
+            display: none !important;
         }
         .aspect-controls {
             margin-bottom: 15px;
@@ -119,6 +190,7 @@
             justify-content: center;
             margin: 15px 0;
             gap: 10px;
+            flex-shrink: 0;
         }
         .control-btn {
             background: var(--container-bg);
@@ -134,11 +206,6 @@
             background: var(--background-color);
             border-color: var(--text-color);
         }
-        .zoom-value {
-            width: 50px;
-            text-align: center;
-            font-weight: 500;
-        }
         .color-picker {
             display: flex;
             align-items: center;
@@ -153,11 +220,6 @@
             margin-left: 8px;
             cursor: pointer;
         }
-        .help-text {
-            font-size: 13px;
-            color: #666;
-            margin-top: 5px;
-        }
         .options-container {
             display: flex;
             flex-wrap: wrap;
@@ -170,87 +232,158 @@
         label {
             font-weight: 500;
         }
-        @media (max-width: 600px) {
-            .controls {
-                padding: 10px;
-            }
-            .options-container {
-                gap: 10px;
-            }
+        .cropper-container {
+            direction: ltr;
+            font-size: 0;
+            line-height: 0;
+            position: relative;
+            touch-action: none;
+            user-select: none;
+            max-width: 100% !important;
+            max-height: 100% !important;
+        }
+        .cropper-wrap-box {
+            overflow: visible !important;
+        }
+        .cropper-drag-box {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .cropper-view-box {
+            display: block;
+            height: 100%;
+            outline: 1px solid var(--text-color);
+            outline-color: var(--text-color);
+            overflow: visible !important;
+            width: 100%;
+        }
+        .cropper-face {
+            background-color: rgba(255, 255, 255, 0.1);
+            left: 0;
+            top: 0;
+        }
+        .cropper-line {
+            background-color: var(--text-color);
+        }
+        .cropper-point {
+            background-color: var(--text-color);
+            height: 5px;
+            width: 5px;
+        }
+        .preview-content {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #cropperContainer {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        #cropperContainer.hidden {
+            display: none !important;
+        }
+        .cropper-canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .cropper-crop-box {
+            overflow: visible !important;
+        }
+        .cropper-modal {
+            background-color: rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Social Media Card Cropper</h1>
-        <p id="description">
-            Drop an image or click to select. Create perfect social media cards with custom backgrounds.
-        </p>
+        <header>
+            <h1>Social Media Card Cropper</h1>
+            <p id="description">
+                Drop an image or click to select. Create perfect social media cards with custom backgrounds.
+            </p>
+        </header>
 
-        <div class="controls">
-            <div class="options-container">
-                <div class="option-group">
-                    <label>Aspect Ratio:</label>
-                    <div class="aspect-controls">
-                        <label style="margin-right: 10px; display: block; margin-top: 8px;">
-                            <input type="radio" name="aspectRatio" value="2" checked=""> 2:1 (Twitter/LinkedIn)
-                        </label>
-                        <label style="margin-right: 10px; display: block; margin-top: 8px;">
-                            <input type="radio" name="aspectRatio" value="1.91"> 1.91:1 (Facebook)
-                        </label>
-                        <label style="margin-right: 10px; display: block; margin-top: 8px;">
-                            <input type="radio" name="aspectRatio" value="1.4"> 1.4:1 (Substack)
-                        </label>
-                        <label style="display: block; margin-top: 8px;">
-                            <input type="radio" name="aspectRatio" value="1"> 1:1 (Instagram)
-                        </label>
+        <div class="main-container">
+            <!-- Left column: Controls and Preview -->
+            <div class="column">
+                <div class="controls">
+                    <div class="options-container">
+                        <div class="option-group">
+                            <label>Aspect Ratio:</label>
+                            <div class="aspect-controls">
+                                <label style="margin-right: 10px; display: block; margin-top: 8px;">
+                                    <input type="radio" name="aspectRatio" value="2" checked=""> 2:1 (Twitter/LinkedIn)
+                                </label>
+                                <label style="margin-right: 10px; display: block; margin-top: 8px;">
+                                    <input type="radio" name="aspectRatio" value="1.91"> 1.91:1 (Facebook)
+                                </label>
+                                <label style="margin-right: 10px; display: block; margin-top: 8px;">
+                                    <input type="radio" name="aspectRatio" value="1.4"> 1.4:1 (Substack)
+                                </label>
+                                <label style="display: block; margin-top: 8px;">
+                                    <input type="radio" name="aspectRatio" value="1"> 1:1 (Instagram)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="option-group">
+                            <div class="color-picker">
+                                <label for="backgroundColor">Background color:</label>
+                                <input type="color" id="backgroundColor" value="#ffffff">
+                            </div>
+
+                            <div style="margin-top: 15px;">
+                                <button id="resetBtn" class="control-btn">Reset Image</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="option-group">
-                    <div class="color-picker">
-                        <label for="backgroundColor">Background color:</label>
-                        <input type="color" id="backgroundColor" value="#ffffff">
-                    </div>
-
-                    <div style="margin-top: 15px;">
-                        <button id="resetBtn" class="control-btn">Reset Image</button>
-                        <span id="zoomValue" class="zoom-value" style="margin-left: 10px;">100%</span>
+                <div class="preview-container empty" id="previewContainer">
+                    <h3>Preview</h3>
+                    <div class="preview-content">
+                        <img id="preview" class="hidden">
+                        <div id="dimensionsInfo"></div>
+                        <div id="previewActions" class="hidden" style="text-align: center; margin-top: 15px;">
+                            <a href="#" id="downloadBtn" class="download-btn">Download Social Media Card</a>
+                        </div>
+                        <div id="noImageMessage">No image selected</div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="drop-zone" id="dropZone">
-            <div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: #999; margin-bottom: 10px;">
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
-                    <line x1="16" y1="5" x2="22" y2="5"></line>
-                    <line x1="19" y1="2" x2="19" y2="8"></line>
-                    <circle cx="9" cy="9" r="2"></circle>
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
-                </svg>
-            </div>
-            Drop image here, click to select, or paste from clipboard
-            <div class="help-text">Supports JPG, PNG, GIF, and WebP formats</div>
-            <input type="file" id="fileInput" accept="image/*" class="hidden">
-        </div>
+            <!-- Right column: Image Input and Cropper -->
+            <div class="column">
+                <div class="drop-zone" id="dropZone">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: #999; margin-bottom: 10px;">
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                            <line x1="16" y1="5" x2="22" y2="5"></line>
+                            <line x1="19" y1="2" x2="19" y2="8"></line>
+                            <circle cx="9" cy="9" r="2"></circle>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                        </svg>
+                    </div>
+                    Drop image here, click to select, or paste from clipboard
+                    <div class="help-text">Supports JPG, PNG, GIF, and WebP formats</div>
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
+                </div>
 
-        <div class="img-container">
-            <img id="image" class="hidden">
-        </div>
+                <div class="cropper-container hidden" id="cropperContainer">
+                    <div class="img-container">
+                        <img id="image">
+                    </div>
 
-        <div class="zoom-controls hidden" id="zoomControlsContainer">
-            <button id="zoomOutBtn" class="control-btn">−</button>
-            <button id="zoomInBtn" class="control-btn">+</button>
-        </div>
-
-        <div class="preview-container hidden" id="previewContainer">
-            <h3>Preview</h3>
-            <img id="preview">
-            <div id="dimensionsInfo"></div>
-            <div style="text-align: center; margin-top: 15px;">
-                <a href="#" id="downloadBtn" class="download-btn">Download Social Media Card</a>
+                    <div class="zoom-controls" id="zoomControlsContainer">
+                        <button id="zoomOutBtn" class="control-btn">−</button>
+                        <button id="zoomInBtn" class="control-btn">+</button>
+                        <button id="clearBtn" class="control-btn" style="margin-left: auto;">Clear Image</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -258,14 +391,12 @@
     <script>
         let cropper = null;
         let cropperData = null;
-        let zoomValue = 1;
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const backgroundColor = document.getElementById('backgroundColor');
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
-        const zoomValueDisplay = document.getElementById('zoomValue');
         const resetBtn = document.getElementById('resetBtn');
         const zoomControlsContainer = document.getElementById('zoomControlsContainer');
 
@@ -273,6 +404,8 @@
         const preview = document.getElementById('preview');
         const previewContainer = document.getElementById('previewContainer');
         const downloadBtn = document.getElementById('downloadBtn');
+
+        const cropperContainer = document.getElementById('cropperContainer');
 
         // Handle paste events
         document.addEventListener('paste', (e) => {
@@ -288,18 +421,8 @@
         });
 
         // Handle drag and drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('dragover');
             handleFile(e.dataTransfer.files[0]);
         });
 
@@ -318,8 +441,6 @@
         resetBtn.addEventListener('click', () => {
             if (cropper) {
                 cropper.reset();
-                zoomValue = 1;
-                updateZoomDisplay();
                 updatePreview();
             }
         });
@@ -328,18 +449,7 @@
         document.querySelectorAll('input[name="aspectRatio"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 if (cropper) {
-                    // Save the current zoom level and other data
-                    const currentZoom = zoomValue;
-
-                    // Reinitialize cropper with new aspect ratio
                     initCropper(true);
-
-                    // Restore zoom after initialization
-                    setTimeout(() => {
-                        zoomValue = currentZoom;
-                        updateZoomDisplay();
-                        cropper.zoomTo(currentZoom);
-                    }, 100);
                 }
             });
         });
@@ -352,29 +462,15 @@
         // Handle zoom buttons with smaller increments
         zoomInBtn.addEventListener('click', () => {
             if (cropper) {
-                const increment = 0.02; // 2% increment
-                zoomValue = Math.min(zoomValue + increment, 3);
-                cropper.zoomTo(zoomValue);
+                cropper.zoom(0.1);
             }
         });
 
         zoomOutBtn.addEventListener('click', () => {
             if (cropper) {
-                const increment = 0.02; // 2% decrement
-                zoomValue = Math.max(zoomValue - increment, 0.1);
-                cropper.zoomTo(zoomValue);
+                cropper.zoom(-0.1);
             }
         });
-
-        function updateZoomDisplay() {
-            // Show zoom percentage with 1 decimal place for smaller values
-            let displayValue = Math.round(zoomValue * 100);
-            if (zoomValue < 0.1) {
-                // Show more precision for very small values
-                displayValue = (zoomValue * 100).toFixed(1);
-            }
-            zoomValueDisplay.textContent = `${displayValue}%`;
-        }
 
         function handleFile(file) {
             if (!file || !file.type.startsWith('image/')) {
@@ -385,12 +481,11 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 image.src = e.target.result;
-                image.classList.remove('hidden');
-                zoomControlsContainer.classList.remove('hidden');
+                dropZone.classList.add('hidden');
+                cropperContainer.classList.remove('hidden');
 
-                // Reset zoom value to default
-                zoomValue = 1;
-                updateZoomDisplay();
+                previewContainer.classList.remove('empty');
+                document.getElementById('noImageMessage').style.display = 'none';
 
                 initCropper();
             };
@@ -413,13 +508,10 @@
                 viewMode: 0,
                 dragMode: 'move',
                 autoCropArea: 0.9,
-                restore: false,
                 guides: true,
                 center: true,
-                highlight: false,
                 cropBoxMovable: true,
                 cropBoxResizable: true,
-                toggleDragModeOnDblclick: false,
                 minCropBoxWidth: 100,
                 minCropBoxHeight: 100,
                 ready: function() {
@@ -428,16 +520,7 @@
                             cropper.setData(cropperData);
                         }, 50);
                     }
-                    // Initialize zoom value based on current canvas state
-                    const data = cropper.getCanvasData();
-                    zoomValue = data.width / data.naturalWidth;
-                    updateZoomDisplay();
                     updatePreview();
-                },
-                zoom: function(e) {
-                    // Update zoom value when zooming from cropper
-                    zoomValue = e.detail.ratio;
-                    updateZoomDisplay();
                 },
                 crop: updatePreview
             });
@@ -494,7 +577,7 @@
             // Convert to JPEG with 0.9 quality
             const previewUrl = canvas.toDataURL('image/jpeg', 0.9);
             preview.src = previewUrl;
-            previewContainer.classList.remove('hidden');
+            previewContainer.classList.remove('empty');
 
             // Show dimensions
             const dimensionsInfo = document.getElementById('dimensionsInfo');
@@ -503,8 +586,34 @@
             // Update download link
             downloadBtn.href = previewUrl;
             downloadBtn.download = `social-card-${aspectRatioValue.replace('.', '_')}.jpg`;
+
+            // Update preview visibility
+            preview.classList.remove('hidden');
+            document.getElementById('previewActions').classList.remove('hidden');
+            previewContainer.classList.remove('empty');
+            document.getElementById('noImageMessage').style.display = 'none';
+        }
+
+        // Add clear button handler
+        document.getElementById('clearBtn').addEventListener('click', clearImage);
+
+        function clearImage() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            image.src = '';
+            cropperContainer.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+
+            // Update preview container instead of hiding it
+            preview.classList.add('hidden');
+            document.getElementById('previewActions').classList.add('hidden');
+            document.getElementById('dimensionsInfo').textContent = '';
+            previewContainer.classList.add('empty');
+            document.getElementById('noImageMessage').style.display = 'block';
         }
     </script>
 
-
-</body></html>
+</body>
+</html>
