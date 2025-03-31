@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Palette Generator</title>
+    <style>
+        :root {
+            /* Light mode variables */
+            --background-color: #fffcf1;
+            --text-color: #000000;
+            --border-color: #ddd;
+            --button-color: #000000;
+            --button-text: #fffcf1;
+            --container-bg: #f5f2e6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode variables */
+                --background-color: #181a1b;
+                --text-color: #fffcf1;
+                --border-color: #3a3e40;
+                --button-color: #000000;
+                --button-text: #fffcf1;
+                --container-bg: #2b2a32;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .drop-zone {
+            flex: 1;
+            min-height: 300px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--container-bg);
+            padding: 2rem;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--text-color);
+        }
+
+        .drop-zone.has-image {
+            padding: 0;
+        }
+
+        .drop-zone img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .palette-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .color-item {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+            overflow: hidden;
+        }
+
+        .color-item:hover {
+            transform: scale(1.05);
+        }
+
+        .color-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .color-item:hover .color-info {
+            opacity: 1;
+        }
+
+        .controls {
+            background: var(--container-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .button {
+            padding: 0.5rem 1rem;
+            background: var(--button-color);
+            color: var(--button-text);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .button:hover {
+            opacity: 0.8;
+        }
+
+        .export-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .color-simulation {
+            margin-top: 1rem;
+        }
+
+        .simulation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .simulation-item {
+            background: var(--container-bg);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Color Palette Generator</h1>
+            <p>Drop an image or click to select. Generate beautiful color palettes with color blindness simulation.</p>
+        </header>
+
+        <div class="main-container">
+            <div class="column">
+                <div class="drop-zone" id="dropZone">
+                    <div id="dropText">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: #999; margin-bottom: 10px;">
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                            <line x1="16" y1="5" x2="22" y2="5"></line>
+                            <line x1="19" y1="2" x2="19" y2="8"></line>
+                            <circle cx="9" cy="9" r="2"></circle>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                        </svg>
+                        <p>Drop image here or click to select</p>
+                    </div>
+                    <img id="sourceImage" class="hidden">
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
+                </div>
+
+                <div class="controls">
+                    <div>
+                        <label>Number of colors:</label>
+                        <input type="range" id="colorCount" min="2" max="16" value="6">
+                        <span id="colorCountValue"></span>
+                    </div>
+                    <div class="export-options">
+                        <button class="button" onclick="exportPalette('css')">Copy CSS</button>
+                        <button class="button" onclick="exportPalette('scss')">Copy SCSS</button>
+                        <button class="button" onclick="exportPalette('json')">Copy JSON</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="palette-container">
+                    <div class="color-grid" id="colorGrid"></div>
+                    <div class="color-simulation">
+                        <h3>Color Blindness Simulation</h3>
+                        <div class="simulation-grid" id="simulationGrid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const sourceImage = document.getElementById('sourceImage');
+        const dropText = document.getElementById('dropText');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Handle drop zone events
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle file drop
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        // Handle click to select
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFiles(e.target.files);
+            }
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sourceImage.src = e.target.result;
+                    sourceImage.classList.remove('hidden');
+                    dropText.classList.add('hidden');
+                    dropZone.classList.add('has-image');
+                    // Here you would call your color extraction function
+                    // generatePalette();
+                };
+                reader.readAsDataURL(files[0]);
+            } else {
+                alert('Please upload an image file.');
+            }
+        }
+
+        // Add paste support
+        document.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.type.indexOf('image') === 0) {
+                    const file = item.getAsFile();
+                    handleFiles([file]);
+                    break;
+                }
+            }
+        });
+
+        // Color extraction and palette generation
+        function generatePalette() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = sourceImage;
+
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const colorMap = new Map();
+
+            // Sample every 16 pixels (restored from previous version)
+            for (let i = 0; i < imageData.length; i += 64) {
+                let r = imageData[i];
+                let g = imageData[i + 1];
+                let b = imageData[i + 2];
+                const a = imageData[i + 3];
+
+                if (a < 127) continue;
+
+                // Quantize colors to reduce the number of similar shades
+                r = Math.round(r / 16) * 16;
+                g = Math.round(g / 16) * 16;
+                b = Math.round(b / 16) * 16;
+
+                // Skip very dark and very light colors
+                if ((r + g + b) < 30 || (r + g + b) > 740) continue;
+
+                const rgb = `${r},${g},${b}`;
+                colorMap.set(rgb, (colorMap.get(rgb) || 0) + 1);
+            }
+
+            let colors = Array.from(colorMap.entries())
+                .map(([rgb, count]) => ({
+                    rgb: rgb.split(',').map(Number),
+                    count
+                }))
+                .sort((a, b) => b.count - a.count);
+
+            const colorCount = parseInt(document.getElementById('colorCount').value);
+            let filteredColors = [];
+
+            // Filter similar colors with original threshold
+            for (const color of colors) {
+                let isTooSimilar = false;
+                for (const existingColor of filteredColors) {
+                    const [r1, g1, b1] = color.rgb;
+                    const [r2, g2, b2] = existingColor.rgb;
+
+                    const diff = Math.sqrt(
+                        Math.pow(r1 - r2, 2) +
+                        Math.pow(g1 - g2, 2) +
+                        Math.pow(b1 - b2, 2)
+                    );
+
+                    if (diff < 50) {  // Original similarity threshold
+                        isTooSimilar = true;
+                        break;
+                    }
+                }
+
+                if (!isTooSimilar) {
+                    filteredColors.push(color);
+                }
+            }
+
+            // If we have fewer colors than requested, duplicate the most frequent ones
+            while (filteredColors.length < colorCount && colors.length > 0) {
+                filteredColors.push(colors[0]);  // Add the most frequent color again
+            }
+
+            // Take exactly the number of colors requested
+            filteredColors = filteredColors.slice(0, colorCount);
+
+            displayPalette(filteredColors);
+            simulateColorBlindness(filteredColors);
+        }
+
+        // Display the generated palette
+        function displayPalette(palette) {
+            const colorGrid = document.getElementById('colorGrid');
+            colorGrid.innerHTML = '';
+
+            palette.forEach(color => {
+                const [r, g, b] = color.rgb;
+                const hex = rgbToHex(r, g, b);
+
+                const colorItem = document.createElement('div');
+                colorItem.className = 'color-item';
+                colorItem.style.backgroundColor = `rgb(${r},${g},${b})`;
+
+                const colorInfo = document.createElement('div');
+                colorInfo.className = 'color-info';
+                colorInfo.textContent = hex;
+
+                colorItem.appendChild(colorInfo);
+                colorGrid.appendChild(colorItem);
+
+                // Add click to copy functionality
+                colorItem.addEventListener('click', () => {
+                    navigator.clipboard.writeText(hex);
+                    const original = colorInfo.textContent;
+                    colorInfo.textContent = 'Copied!';
+                    setTimeout(() => {
+                        colorInfo.textContent = original;
+                    }, 1000);
+                });
+            });
+        }
+
+        // Color blindness simulation
+        function simulateColorBlindness(palette) {
+            const simulationGrid = document.getElementById('simulationGrid');
+            simulationGrid.innerHTML = '';
+
+            const types = [
+                { name: 'Protanopia (Red-Blind)', matrix: [
+                    [0.567, 0.433, 0], [0.558, 0.442, 0], [0, 0.242, 0.758]
+                ]},
+                { name: 'Deuteranopia (Green-Blind)', matrix: [
+                    [0.625, 0.375, 0], [0.7, 0.3, 0], [0, 0.3, 0.7]
+                ]},
+                { name: 'Tritanopia (Blue-Blind)', matrix: [
+                    [0.95, 0.05, 0], [0, 0.433, 0.567], [0, 0.475, 0.525]
+                ]}
+            ];
+
+            types.forEach(type => {
+                const simContainer = document.createElement('div');
+                simContainer.className = 'simulation-item';
+
+                const title = document.createElement('h4');
+                title.textContent = type.name;
+                simContainer.appendChild(title);
+
+                const colorStrip = document.createElement('div');
+                colorStrip.style.display = 'flex';
+                colorStrip.style.gap = '4px';
+                colorStrip.style.marginTop = '8px';
+
+                palette.forEach(color => {
+                    const simulated = simulateColor(color.rgb, type.matrix);
+                    const colorBox = document.createElement('div');
+                    colorBox.style.flex = '1';
+                    colorBox.style.height = '30px';
+                    colorBox.style.backgroundColor = `rgb(${simulated.join(',')})`;
+                    colorBox.style.borderRadius = '4px';
+                    colorStrip.appendChild(colorBox);
+                });
+
+                simContainer.appendChild(colorStrip);
+                simulationGrid.appendChild(simContainer);
+            });
+        }
+
+        // Helper functions
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        function simulateColor([r, g, b], matrix) {
+            const result = [0, 0, 0];
+            for (let i = 0; i < 3; i++) {
+                result[i] = Math.round(
+                    matrix[i][0] * r +
+                    matrix[i][1] * g +
+                    matrix[i][2] * b
+                );
+            }
+            return result;
+        }
+
+        // Export functionality
+        function exportPalette(format) {
+            const colors = Array.from(document.querySelectorAll('.color-info'))
+                .map(info => info.textContent);
+
+            let output = '';
+            switch (format) {
+                case 'css':
+                    output = `:root {\n${colors.map((c, i) => `    --color-${i + 1}: ${c};`).join('\n')}\n}`;
+                    break;
+                case 'scss':
+                    output = colors.map((c, i) => `$color-${i + 1}: ${c};`).join('\n');
+                    break;
+                case 'json':
+                    output = JSON.stringify(colors, null, 2);
+                    break;
+            }
+
+            navigator.clipboard.writeText(output);
+            const btn = document.querySelector(`button[onclick="exportPalette('${format}')"]`);
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = original;
+            }, 1000);
+        }
+
+        // Update color count display
+        const colorCount = document.getElementById('colorCount');
+        const colorCountValue = document.getElementById('colorCountValue');
+
+        // Initialize the display value when the page loads
+        colorCountValue.textContent = colorCount.value;
+
+        colorCount.addEventListener('input', () => {
+            colorCountValue.textContent = colorCount.value;
+            if (sourceImage.src) {
+                generatePalette();
+            }
+        });
+
+        // Call generatePalette when image is loaded
+        sourceImage.addEventListener('load', generatePalette);
+    </script>
+</body>
+</html>
