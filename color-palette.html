@@ -194,10 +194,102 @@
             background: var(--container-bg);
             padding: 1rem;
             border-radius: 4px;
+            display: flex;
+            flex-direction: column;
         }
 
         .hidden {
             display: none !important;
+        }
+
+        .placeholder-text {
+            text-align: center;
+            color: var(--text-color);
+            opacity: 0.7;
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .color-item.placeholder {
+            border: 2px dashed var(--border-color);
+            background: transparent;
+        }
+
+        .color-strip {
+            display: flex;
+            gap: 4px;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+
+        .color-strip.placeholder {
+            height: 30px;
+        }
+
+        .color-box {
+            flex: 1;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-box:hover {
+            transform: scale(1.05);
+        }
+
+        .color-box.placeholder {
+            border: 2px dashed var(--border-color);
+            background: transparent;
+            cursor: default;
+            transform: none;
+        }
+
+        .color-item:hover .color-info,
+        .color-box:hover .color-info {
+            opacity: 1;
+        }
+
+        /* Add these styles */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            transform: translateY(-100%);
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .color-box:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Add these styles */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-container label {
+            min-width: max-content;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+        }
+
+        .slider-container span {
+            min-width: 1.5rem;
+            text-align: right;
         }
     </style>
 </head>
@@ -226,7 +318,7 @@
                 </div>
 
                 <div class="controls">
-                    <div>
+                    <div class="slider-container">
                         <label>Number of colors:</label>
                         <input type="range" id="colorCount" min="2" max="16" value="6">
                         <span id="colorCountValue"></span>
@@ -473,17 +565,33 @@
                 simContainer.appendChild(title);
 
                 const colorStrip = document.createElement('div');
-                colorStrip.style.display = 'flex';
-                colorStrip.style.gap = '4px';
-                colorStrip.style.marginTop = '8px';
+                colorStrip.className = 'color-strip';
 
                 palette.forEach(color => {
                     const simulated = simulateColor(color.rgb, type.matrix);
                     const colorBox = document.createElement('div');
+                    colorBox.className = 'color-box';
                     colorBox.style.flex = '1';
                     colorBox.style.height = '30px';
                     colorBox.style.backgroundColor = `rgb(${simulated.join(',')})`;
                     colorBox.style.borderRadius = '4px';
+
+                    // Add tooltip and click-to-copy functionality
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip';
+                    const hex = rgbToHex(...simulated);
+                    tooltip.textContent = hex;
+
+                    colorBox.appendChild(tooltip);
+                    colorBox.addEventListener('click', () => {
+                        navigator.clipboard.writeText(hex);
+                        const original = tooltip.textContent;
+                        tooltip.textContent = 'Copied!';
+                        setTimeout(() => {
+                            tooltip.textContent = original;
+                        }, 1000);
+                    });
+
                     colorStrip.appendChild(colorBox);
                 });
 
@@ -550,11 +658,56 @@
             colorCountValue.textContent = colorCount.value;
             if (sourceImage.src) {
                 generatePalette();
+            } else {
+                displayPlaceholders();
             }
         });
 
         // Call generatePalette when image is loaded
         sourceImage.addEventListener('load', generatePalette);
+
+        function displayPlaceholders() {
+            const colorCount = parseInt(document.getElementById('colorCount').value);
+
+            // Update color grid placeholders
+            const colorGrid = document.getElementById('colorGrid');
+            colorGrid.innerHTML = '';
+            for (let i = 0; i < colorCount; i++) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'color-item placeholder';
+                colorGrid.appendChild(placeholder);
+            }
+
+            // Update simulation grid placeholders
+            const simulationGrid = document.getElementById('simulationGrid');
+            simulationGrid.innerHTML = '';
+
+            const types = ['Protanopia (Red-Blind)', 'Deuteranopia (Green-Blind)', 'Tritanopia (Blue-Blind)'];
+
+            types.forEach(type => {
+                const simContainer = document.createElement('div');
+                simContainer.className = 'simulation-item';
+
+                const title = document.createElement('h4');
+                title.textContent = type;
+                simContainer.appendChild(title);
+
+                const colorStrip = document.createElement('div');
+                colorStrip.className = 'color-strip placeholder';
+
+                for (let i = 0; i < colorCount; i++) {
+                    const colorBox = document.createElement('div');
+                    colorBox.className = 'color-box placeholder';
+                    colorStrip.appendChild(colorBox);
+                }
+
+                simContainer.appendChild(colorStrip);
+                simulationGrid.appendChild(simContainer);
+            });
+        }
+
+        // Initialize placeholders on page load
+        displayPlaceholders();
     </script>
 </body>
 </html>
