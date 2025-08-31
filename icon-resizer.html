@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Extension Icon Resizer</title>
+    <style>
+        :root {
+            /* Light mode variables */
+            --background-color: #fffcf1;
+            --text-color: #000000;
+            --border-color: #ddd;
+            --button-color: #000000;
+            --button-text: #fffcf1;
+            --container-bg: #f5f2e6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode variables */
+                --background-color: #181a1b;
+                --text-color: #fffcf1;
+                --border-color: #3a3e40;
+                --button-color: #000000;
+                --button-text: #fffcf1;
+                --container-bg: #2b2a32;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .drop-zone {
+            flex: 1;
+            min-height: 300px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--container-bg);
+            padding: 2rem;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--text-color);
+        }
+
+        .drop-zone.has-image {
+            padding: 1rem;
+        }
+
+        .drop-zone img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+        }
+
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .icon-item:hover {
+            transform: scale(1.02);
+        }
+
+        .icon-preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .icon-size {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .icon-description {
+            font-size: 0.8rem;
+            color: var(--text-color);
+            opacity: 0.7;
+            text-align: center;
+        }
+
+        .controls {
+            background: var(--container-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .button {
+            padding: 0.5rem 1rem;
+            background: var(--button-color);
+            color: var(--button-text);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .button:hover {
+            opacity: 0.8;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .placeholder-text {
+            text-align: center;
+            color: var(--text-color);
+            opacity: 0.7;
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .canvas-container {
+            display: none;
+        }
+
+        .download-button {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .download-button:hover {
+            background: var(--text-color);
+            color: var(--background-color);
+        }
+
+        .quality-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .quality-controls label {
+            min-width: max-content;
+        }
+
+        .quality-controls input[type="range"] {
+            flex: 1;
+        }
+
+        .quality-controls span {
+            min-width: 3rem;
+            text-align: right;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Browser Extension Icon Resizer</h1>
+            <p id="description">
+                Upload an image to generate all browser extension icon sizes. Supports PNG, JPG, and SVG formats.
+            </p>
+        </header>
+
+        <div class="main-container">
+            <div class="column">
+                <div class="drop-zone" id="dropZone">
+                    <div id="dropText">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: #999; margin-bottom: 10px;">
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                            <line x1="16" y1="5" x2="22" y2="5"></line>
+                            <line x1="19" y1="2" x2="19" y2="8"></line>
+                            <circle cx="9" cy="9" r="2"></circle>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                        </svg>
+                        <p>Drop image here or click to select</p>
+                        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Supports PNG, JPG, SVG</p>
+                    </div>
+                    <img id="sourceImage" class="hidden">
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
+                </div>
+
+                <div class="controls">
+                    <div class="quality-controls">
+                        <label>Quality:</label>
+                        <input type="range" id="qualitySlider" min="0.1" max="1" step="0.1" value="1">
+                        <span id="qualityValue">100%</span>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="transparentBg" checked>
+                        <label for="transparentBg">Transparent background (PNG only)</label>
+                    </div>
+                    <div class="button-group">
+                        <button class="button" id="downloadAll" disabled>Download All</button>
+                        <button class="button" id="resetTool">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="preview-container">
+                    <div class="icons-grid" id="iconsGrid">
+                        <div class="placeholder-text">Upload an image to see icon previews</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="resizeCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const sourceImage = document.getElementById('sourceImage');
+        const dropText = document.getElementById('dropText');
+        const iconsGrid = document.getElementById('iconsGrid');
+        const downloadAllBtn = document.getElementById('downloadAll');
+        const resetBtn = document.getElementById('resetTool');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        const transparentBgCheckbox = document.getElementById('transparentBg');
+        const canvas = document.getElementById('resizeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Browser extension icon sizes
+        const iconSizes = [
+            { size: 16, description: 'Toolbar icon (Chrome/Firefox)' },
+            { size: 19, description: 'Toolbar icon (Chrome retina)' },
+            { size: 32, description: 'Toolbar icon (Windows)' },
+            { size: 38, description: 'Toolbar icon (Windows retina)' },
+            { size: 48, description: 'Extension management page' },
+            { size: 128, description: 'Chrome Web Store & installation' }
+        ];
+
+        let originalImage = null;
+        let resizedImages = {};
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Handle drop zone events
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle file drop
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        // Handle click to select
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFiles(e.target.files);
+            }
+        });
+
+        // Quality slider
+        qualitySlider.addEventListener('input', (e) => {
+            const quality = parseFloat(e.target.value);
+            qualityValue.textContent = Math.round(quality * 100) + '%';
+            if (originalImage) {
+                generateIcons();
+            }
+        });
+
+        // Transparent background checkbox
+        transparentBgCheckbox.addEventListener('change', () => {
+            if (originalImage) {
+                generateIcons();
+            }
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', resetTool);
+
+        // Download all button
+        downloadAllBtn.addEventListener('click', downloadAllIcons);
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        originalImage = img;
+                        sourceImage.src = e.target.result;
+                        sourceImage.classList.remove('hidden');
+                        dropText.classList.add('hidden');
+                        dropZone.classList.add('has-image');
+                        generateIcons();
+                        downloadAllBtn.disabled = false;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            } else {
+                alert('Please upload an image file.');
+            }
+        }
+
+        function generateIcons() {
+            iconsGrid.innerHTML = '';
+            resizedImages = {};
+
+            iconSizes.forEach(iconInfo => {
+                const iconItem = document.createElement('div');
+                iconItem.className = 'icon-item';
+
+                const iconPreview = document.createElement('div');
+                iconPreview.className = 'icon-preview';
+                iconPreview.style.width = Math.min(iconInfo.size * 2, 128) + 'px';
+                iconPreview.style.height = Math.min(iconInfo.size * 2, 128) + 'px';
+
+                const resizedImg = resizeImage(originalImage, iconInfo.size, iconInfo.size);
+                iconPreview.appendChild(resizedImg);
+
+                const iconSize = document.createElement('div');
+                iconSize.className = 'icon-size';
+                iconSize.textContent = `${iconInfo.size}×${iconInfo.size}`;
+
+                const iconDescription = document.createElement('div');
+                iconDescription.className = 'icon-description';
+                iconDescription.textContent = iconInfo.description;
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-button';
+                downloadBtn.textContent = 'Download';
+                downloadBtn.addEventListener('click', () => downloadIcon(iconInfo.size));
+
+                iconItem.appendChild(iconPreview);
+                iconItem.appendChild(iconSize);
+                iconItem.appendChild(iconDescription);
+                iconItem.appendChild(downloadBtn);
+
+                iconsGrid.appendChild(iconItem);
+
+                // Store the resized image data
+                resizedImages[iconInfo.size] = resizedImg.src;
+            });
+        }
+
+        function resizeImage(img, width, height) {
+            canvas.width = width;
+            canvas.height = height;
+
+            // Clear canvas with transparent or white background
+            if (transparentBgCheckbox.checked) {
+                ctx.clearRect(0, 0, width, height);
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            // Calculate dimensions to maintain aspect ratio
+            const imgAspectRatio = img.width / img.height;
+            const canvasAspectRatio = width / height;
+
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (imgAspectRatio > canvasAspectRatio) {
+                // Image is wider than canvas
+                drawWidth = width;
+                drawHeight = width / imgAspectRatio;
+                offsetX = 0;
+                offsetY = (height - drawHeight) / 2;
+            } else {
+                // Image is taller than canvas
+                drawWidth = height * imgAspectRatio;
+                drawHeight = height;
+                offsetX = (width - drawWidth) / 2;
+                offsetY = 0;
+            }
+
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+            const resizedImg = new Image();
+            const quality = parseFloat(qualitySlider.value);
+            const format = transparentBgCheckbox.checked ? 'image/png' : 'image/jpeg';
+            resizedImg.src = canvas.toDataURL(format, quality);
+
+            return resizedImg;
+        }
+
+        function downloadIcon(size) {
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.${transparentBgCheckbox.checked ? 'png' : 'jpg'}`;
+            link.href = resizedImages[size];
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadAllIcons() {
+            iconSizes.forEach(iconInfo => {
+                setTimeout(() => downloadIcon(iconInfo.size), iconInfo.size * 10);
+            });
+        }
+
+        function resetTool() {
+            originalImage = null;
+            resizedImages = {};
+            sourceImage.classList.add('hidden');
+            dropText.classList.remove('hidden');
+            dropZone.classList.remove('has-image');
+            iconsGrid.innerHTML = '<div class="placeholder-text">Upload an image to see icon previews</div>';
+            downloadAllBtn.disabled = true;
+            fileInput.value = '';
+        }
+
+        // Add paste support
+        document.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.type.indexOf('image') === 0) {
+                    const file = item.getAsFile();
+                    handleFiles([file]);
+                    break;
+                }
+            }
+        });
+
+        // Initialize quality display
+        qualityValue.textContent = Math.round(parseFloat(qualitySlider.value) * 100) + '%';
+    </script>
+</body>
+</html>
