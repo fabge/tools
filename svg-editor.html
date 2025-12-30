@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SVG Editor & Optimizer</title>
-    <!-- Add Fabric.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root {
             /* Light mode variables */
@@ -110,7 +108,6 @@
             min-height: 0;
             overflow: hidden;
             position: relative;
-            background: white;
         }
 
         .button {
@@ -193,18 +190,14 @@
         #canvas {
             width: 100%;
             height: 100%;
+            padding: 1rem;
+        }
+
+        #canvas svg {
             background-color: white;
-        }
-
-        .selected {
-            outline: 2px dashed blue;
-        }
-
-        .handle {
-            fill: white;
-            stroke: blue;
-            stroke-width: 2;
-            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -212,9 +205,7 @@
     <div class="container">
         <header>
             <h1>SVG Editor & Optimizer</h1>
-            <p id="description">
-                Edit, optimize, and convert SVG files for web use
-            </p>
+            <p>Edit, optimize, and convert SVG files for web use</p>
         </header>
 
         <div class="main-container">
@@ -228,10 +219,8 @@
                     </div>
 
                     <div class="control-group">
-                        <label>Properties</label>
-                        <button class="button" id="fillColor">Fill Color</button>
-                        <button class="button" id="strokeColor">Stroke Color</button>
-                        <button class="button" id="delete">Delete Selected</button>
+                        <label>Optimization</label>
+                        <button class="button" id="optimizeSvg">Optimize SVG</button>
                     </div>
 
                     <div class="control-group">
@@ -247,179 +236,322 @@
                 <div class="editor-container">
                     <div class="toolbar">
                         <button class="tool-button active" data-tool="select">Select</button>
+                        <button class="tool-button" data-tool="move">Move</button>
                         <button class="tool-button" data-tool="rect">Rectangle</button>
                         <button class="tool-button" data-tool="circle">Circle</button>
+                        <button class="tool-button" data-tool="path">Path</button>
                         <button class="tool-button" data-tool="text">Text</button>
-                        <button class="tool-button" data-tool="draw">Free Draw</button>
                     </div>
                     <div class="canvas-container">
-                        <canvas id="canvas"></canvas>
+                        <div id="dropZone" class="drop-zone">
+                            <p>Drop SVG file here or click to select</p>
+                            <input type="file" id="fileInput" accept=".svg" style="display: none;">
+                        </div>
+                        <div id="canvas"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- SVG.js for SVG manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.1.2/svg.min.js"></script>
+    <!-- SVGO for optimization via web worker -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svgo/3.0.2/browser/svgo.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Fabric canvas
-            const canvas = new fabric.Canvas('canvas', {
-                width: 800,
-                height: 600,
-                backgroundColor: 'white'
-            });
-
-            // Make canvas responsive
-            function resizeCanvas() {
-                const container = document.querySelector('.canvas-container');
-                const ratio = canvas.getWidth() / canvas.getHeight();
-                const containerWidth = container.clientWidth;
-                const containerHeight = container.clientHeight;
-
-                const scale = Math.min(
-                    containerWidth / canvas.getWidth(),
-                    containerHeight / canvas.getHeight()
-                );
-
-                canvas.setDimensions({
-                    width: containerWidth,
-                    height: containerWidth / ratio
-                });
-                canvas.setZoom(scale);
-            }
-
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-
-            // Tool handling
-            let currentTool = 'select';
+            // Elements
+            const svgSource = document.getElementById('svgSource');
+            const updateSvgBtn = document.getElementById('updateSvg');
+            const optimizeSvgBtn = document.getElementById('optimizeSvg');
+            const exportSvgBtn = document.getElementById('exportSvg');
+            const exportPngBtn = document.getElementById('exportPng');
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const canvas = document.getElementById('canvas');
             const toolButtons = document.querySelectorAll('.tool-button');
 
-            toolButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    toolButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    currentTool = button.getAttribute('data-tool');
+            // State
+            let draw = null;
+            let selectedTool = 'select';
+            let selectedElement = null;
+            let isCanvasActive = false;
 
-                    // Disable drawing mode when not using draw tool
-                    if (currentTool !== 'draw') {
-                        canvas.isDrawingMode = false;
+            // Initialize canvas
+            function initCanvas() {
+                if (draw) {
+                    draw.clear();
+                } else {
+                    draw = SVG().addTo('#canvas').size('100%', '100%');
+                }
+                isCanvasActive = true;
+                dropZone.classList.add('hidden');
+            }
+
+            // Handle file upload
+            function handleFile(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    svgSource.value = e.target.result;
+                    updateSvg();
+                };
+                reader.readAsText(file);
+            }
+
+            // Update SVG canvas
+            function updateSvg() {
+                if (svgSource.value.trim()) {
+                    initCanvas();
+
+                    // Parse SVG content
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(svgSource.value, 'image/svg+xml');
+                    const svgElement = doc.querySelector('svg');
+
+                    if (svgElement) {
+                        draw.clear();
+                        draw.svg(svgSource.value);
+
+                        // Make elements selectable
+                        draw.children().forEach(element => {
+                            makeSelectable(element);
+                        });
                     } else {
-                        canvas.isDrawingMode = true;
-                        canvas.freeDrawingBrush.width = 2;
-                        canvas.freeDrawingBrush.color = '#000000';
+                        alert('Invalid SVG content');
+                    }
+                }
+            }
+
+            // Make element interactive
+            function makeSelectable(element) {
+                element.click(function() {
+                    if (selectedTool === 'select') {
+                        if (selectedElement) {
+                            selectedElement.selectize(false).resize('stop');
+                        }
+                        selectedElement = element;
+                        selectedElement.selectize().resize();
                     }
                 });
-            });
+            }
 
-            // Add shapes
-            canvas.on('mouse:down', function(options) {
-                if (currentTool === 'rect') {
-                    const rect = new fabric.Rect({
-                        left: options.pointer.x,
-                        top: options.pointer.y,
-                        width: 100,
-                        height: 100,
-                        fill: 'transparent',
-                        stroke: '#000000',
-                        strokeWidth: 2
-                    });
-                    canvas.add(rect);
-                    canvas.setActiveObject(rect);
-                } else if (currentTool === 'circle') {
-                    const circle = new fabric.Circle({
-                        left: options.pointer.x,
-                        top: options.pointer.y,
-                        radius: 50,
-                        fill: 'transparent',
-                        stroke: '#000000',
-                        strokeWidth: 2
-                    });
-                    canvas.add(circle);
-                    canvas.setActiveObject(circle);
-                } else if (currentTool === 'text') {
-                    const text = new fabric.IText('Double click to edit', {
-                        left: options.pointer.x,
-                        top: options.pointer.y,
-                        fontSize: 20
-                    });
-                    canvas.add(text);
-                    canvas.setActiveObject(text);
-                }
-            });
+            // Optimize SVG
+            function optimizeSvg() {
+                if (svgSource.value.trim()) {
+                    try {
+                        const result = svgo.optimize(svgSource.value, {
+                            multipass: true,
+                            plugins: [
+                                'cleanupAttrs',
+                                'removeDoctype',
+                                'removeXMLProcInst',
+                                'removeComments',
+                                'removeMetadata',
+                                'removeTitle',
+                                'removeDesc',
+                                'removeUselessDefs',
+                                'removeEditorsNSData',
+                                'removeEmptyAttrs',
+                                'removeHiddenElems',
+                                'removeEmptyText',
+                                'removeEmptyContainers',
+                                'minifyStyles',
+                                'convertStyleToAttrs',
+                                'convertColors',
+                                'convertPathData',
+                                'convertTransform',
+                                'removeUnknownsAndDefaults',
+                                'removeNonInheritableGroupAttrs',
+                                'removeUselessStrokeAndFill',
+                                'removeUnusedNS',
+                                'collapseGroups',
+                                'mergePaths',
+                                'removeRasterImages',
+                                'sortAttrs',
+                                'sortDefsChildren',
+                                'removeDimensions',
+                                'removeAttrs'
+                            ]
+                        });
 
-            // Color controls
-            document.getElementById('fillColor').addEventListener('click', () => {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    const color = prompt('Enter fill color (e.g., #ff0000, red, rgba(255,0,0,0.5)):', activeObject.fill);
-                    if (color) {
-                        activeObject.set('fill', color);
-                        canvas.renderAll();
+                        svgSource.value = result.data;
+                        updateSvg();
+                    } catch (error) {
+                        console.error('SVG optimization error:', error);
+                        alert('Error optimizing SVG: ' + error.message);
                     }
                 }
-            });
+            }
 
-            document.getElementById('strokeColor').addEventListener('click', () => {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    const color = prompt('Enter stroke color:', activeObject.stroke);
-                    if (color) {
-                        activeObject.set('stroke', color);
-                        canvas.renderAll();
-                    }
-                }
-            });
+            // Export as SVG
+            function exportAsSvg() {
+                if (!isCanvasActive) return;
 
-            // Delete selected object
-            document.getElementById('delete').addEventListener('click', () => {
-                const activeObject = canvas.getActiveObject();
-                if (activeObject) {
-                    canvas.remove(activeObject);
-                }
-            });
-
-            // Export functions
-            document.getElementById('exportSvg').addEventListener('click', () => {
-                const svgData = canvas.toSVG();
+                const svgData = svgSource.value;
                 const blob = new Blob([svgData], { type: 'image/svg+xml' });
                 const url = URL.createObjectURL(blob);
+
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'drawing.svg';
+                a.download = 'exported.svg';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-            });
+            }
 
-            document.getElementById('exportPng').addEventListener('click', () => {
-                const dataURL = canvas.toDataURL({
-                    format: 'png',
-                    quality: 1
+            // Export as PNG
+            function exportAsPng() {
+                if (!isCanvasActive) return;
+
+                const svgData = svgSource.value;
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    URL.revokeObjectURL(url);
+
+                    canvas.toBlob(function(blob) {
+                        const pngUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = pngUrl;
+                        a.download = 'exported.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(pngUrl);
+                    });
+                };
+
+                img.src = url;
+            }
+
+            // Drawing functions
+            function initDrawing() {
+                if (!isCanvasActive) {
+                    initCanvas();
+                }
+
+                // Clear selection
+                if (selectedElement) {
+                    selectedElement.selectize(false).resize('stop');
+                    selectedElement = null;
+                }
+
+                switch (selectedTool) {
+                    case 'rect':
+                        let rect = draw.rect(100, 100).fill('#f06').move(50, 50);
+                        makeSelectable(rect);
+                        updateSvgSource();
+                        break;
+                    case 'circle':
+                        let circle = draw.circle(100).fill('#6f0').move(50, 50);
+                        makeSelectable(circle);
+                        updateSvgSource();
+                        break;
+                    case 'path':
+                        let path = draw.path('M50,50 L150,50 L100,150 Z').fill('#06f');
+                        makeSelectable(path);
+                        updateSvgSource();
+                        break;
+                    case 'text':
+                        let text = draw.text('Edit me').move(50, 50).font({
+                            family: 'Arial',
+                            size: 24,
+                            anchor: 'start'
+                        });
+                        makeSelectable(text);
+                        updateSvgSource();
+                        break;
+                }
+            }
+
+            // Update SVG source code from canvas
+            function updateSvgSource() {
+                svgSource.value = canvas.innerHTML;
+            }
+
+            // Event listeners
+            updateSvgBtn.addEventListener('click', updateSvg);
+            optimizeSvgBtn.addEventListener('click', optimizeSvg);
+            exportSvgBtn.addEventListener('click', exportAsSvg);
+            exportPngBtn.addEventListener('click', exportAsPng);
+
+            // Tool selection
+            toolButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    toolButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedTool = this.getAttribute('data-tool');
+
+                    if (selectedTool !== 'select' && selectedTool !== 'move') {
+                        initDrawing();
+                    }
                 });
-                const a = document.createElement('a');
-                a.href = dataURL;
-                a.download = 'drawing.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
             });
 
-            // SVG import
-            document.getElementById('updateSvg').addEventListener('click', () => {
-                const svgContent = document.getElementById('svgSource').value;
-                fabric.loadSVGFromString(svgContent, function(objects, options) {
-                    const obj = fabric.util.groupSVGElements(objects, options);
-                    canvas.clear();
-                    canvas.add(obj);
-                    canvas.renderAll();
-                });
+            // File drop handling
+            dropZone.addEventListener('click', function() {
+                fileInput.click();
             });
 
-            // Update SVG source when canvas changes
-            canvas.on('object:modified', function() {
-                document.getElementById('svgSource').value = canvas.toSVG();
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    handleFile(this.files[0]);
+                }
+            });
+
+            canvas.addEventListener('click', function() {
+                if (selectedTool !== 'select' && selectedTool !== 'move') {
+                    initDrawing();
+                }
+            });
+
+            // Drag and drop events
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--text-color)';
+            });
+
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--border-color)';
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--border-color)';
+
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type === 'image/svg+xml') {
+                        handleFile(file);
+                    } else {
+                        alert('Please drop an SVG file.');
+                    }
+                }
+            });
+
+            // Listen for changes to update SVG source when editing
+            canvas.addEventListener('DOMSubtreeModified', function() {
+                if (isCanvasActive && draw) {
+                    // Debounce this for performance
+                    clearTimeout(canvas.timeout);
+                    canvas.timeout = setTimeout(function() {
+                        svgSource.value = canvas.innerHTML;
+                    }, 500);
+                }
             });
         });
     </script>

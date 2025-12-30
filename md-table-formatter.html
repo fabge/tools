@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Table Formatter</title>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            /* Light mode variables */
+            --background-color: #fffcf1;
+            --text-color: #000000;
+            --border-color: #ddd;
+            --button-color: #000000;
+            --button-text: #fffcf1;
+            --textarea-bg: #f5f2e6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode variables */
+                --background-color: #181a1b;
+                --text-color: #fffcf1;
+                --border-color: #3a3e40;
+                --button-color: #000000;
+                --button-text: #fffcf1;
+                --textarea-bg: #2b2a32;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 0;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            resize: none;
+            min-height: 0;
+            background-color: var(--textarea-bg);
+            color: var(--text-color);
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background-color: var(--button-color);
+            color: var(--button-text);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: opacity 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.7;
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .output-wrapper {
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background-color: var(--textarea-bg);
+            overflow: auto;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+        }
+
+        .preview-wrapper {
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background-color: var(--textarea-bg);
+            overflow: auto;
+            padding: 1rem;
+        }
+
+        .preview-wrapper table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .preview-wrapper th,
+        .preview-wrapper td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .preview-wrapper th {
+            background-color: var(--background-color);
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 0;
+        }
+
+        .right-column > div:first-of-type {
+            flex: 1;
+        }
+
+        .right-column > div:last-of-type {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Markdown Table Formatter</h1>
+            <p id="description">
+                Paste messy markdown tables and convert them to a compact format with minimal whitespace.
+            </p>
+        </header>
+
+        <div class="main-container">
+            <div class="column">
+                <h3>Input</h3>
+                <textarea id="tableInput" placeholder="Paste your markdown table here..."></textarea>
+                <button onclick="formatTable()">Format Table</button>
+            </div>
+
+            <div class="right-column">
+                <div class="column">
+                    <h3>Formatted Output</h3>
+                    <div class="output-wrapper" id="formattedOutput"></div>
+                    <button onclick="copyToClipboard(this)">Copy to Clipboard</button>
+                </div>
+
+                <div class="column">
+                    <h3>Preview</h3>
+                    <div class="preview-wrapper" id="previewOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function parseTable(input) {
+            const lines = input.trim().split('\n').filter(line => line.trim());
+            const rows = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('|') && !trimmed.endsWith('|') && !trimmed.includes('|')) {
+                    continue;
+                }
+
+                let content = trimmed;
+                if (content.startsWith('|')) content = content.slice(1);
+                if (content.endsWith('|')) content = content.slice(0, -1);
+
+                const cells = content.split('|').map(cell => cell.trim());
+                rows.push(cells);
+            }
+
+            return rows;
+        }
+
+        function isSeparatorRow(row) {
+            return row.every(cell => /^:?-+:?$/.test(cell) || cell === '');
+        }
+
+        function getAlignment(cell) {
+            if (cell.startsWith(':') && cell.endsWith(':')) return 'center';
+            if (cell.endsWith(':')) return 'right';
+            if (cell.startsWith(':')) return 'left';
+            return 'none';
+        }
+
+        function formatTable() {
+            const input = document.getElementById('tableInput').value;
+            const rows = parseTable(input);
+
+            if (rows.length < 2) {
+                document.getElementById('formattedOutput').textContent = 'Invalid table: need at least header and separator rows';
+                document.getElementById('previewOutput').innerHTML = '';
+                return;
+            }
+
+            let separatorIndex = -1;
+            for (let i = 0; i < rows.length; i++) {
+                if (isSeparatorRow(rows[i])) {
+                    separatorIndex = i;
+                    break;
+                }
+            }
+
+            if (separatorIndex === -1) {
+                document.getElementById('formattedOutput').textContent = 'Invalid table: no separator row found';
+                document.getElementById('previewOutput').innerHTML = '';
+                return;
+            }
+
+            const alignments = rows[separatorIndex].map(getAlignment);
+            const columnCount = Math.max(...rows.map(r => r.length));
+
+            const normalizedRows = rows.map((row, rowIndex) => {
+                const normalized = [];
+                for (let i = 0; i < columnCount; i++) {
+                    normalized.push(row[i] !== undefined ? row[i] : '');
+                }
+                return normalized;
+            });
+
+            const formattedLines = normalizedRows.map((row, rowIndex) => {
+                if (rowIndex === separatorIndex) {
+                    const separatorCells = alignments.map(align => {
+                        if (align === 'center') return ':-:';
+                        if (align === 'right') return '-:';
+                        if (align === 'left') return ':-';
+                        return '-';
+                    });
+                    while (separatorCells.length < columnCount) {
+                        separatorCells.push('-');
+                    }
+                    return '| ' + separatorCells.join(' | ') + ' |';
+                }
+                return '| ' + row.join(' | ') + ' |';
+            });
+
+            const formatted = formattedLines.join('\n');
+            document.getElementById('formattedOutput').textContent = formatted;
+
+            renderPreview(formatted);
+        }
+
+        function renderPreview(markdown) {
+            const html = marked.parse(markdown);
+            document.getElementById('previewOutput').innerHTML = html;
+        }
+
+        async function copyToClipboard(button) {
+            const text = document.getElementById('formattedOutput').textContent;
+            await navigator.clipboard.writeText(text);
+
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.disabled = true;
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 1500);
+        }
+
+        document.getElementById('tableInput').addEventListener('input', formatTable);
+    </script>
+</body>
+</html>
