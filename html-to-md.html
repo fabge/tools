@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML to Markdown Converter</title>
 
-    <script defer src="https://unpkg.com/defuddle@latest/dist/index.js"></script>
+    <script defer src="https://unpkg.com/defuddle@latest/dist/index.full.js"></script>
     <script defer src="https://unpkg.com/turndown/dist/turndown.js"></script>
 
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -139,6 +139,15 @@
             overflow: auto;
         }
 
+        .button-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .button-row button {
+            flex: 1;
+        }
+
         .markdown-wrapper code {
             white-space: pre-wrap;
             background: transparent !important;
@@ -160,9 +169,15 @@
             <div class="column">
                 <h3>Input</h3>
                 <input type="url" id="urlInput" placeholder="Enter URL" class="url-input">
-                <button onclick="fetchAndConvert()">Fetch & Convert</button>
+                <div class="button-row">
+                    <button onclick="fetchHTML()">Fetch</button>
+                    <button onclick="fetchMarkdown()">Fetch Markdown</button>
+                </div>
                 <textarea id="htmlInput" placeholder="or paste your HTML here"></textarea>
-                <button onclick="convertToMarkdown()">Convert to Markdown</button>
+                <div class="button-row">
+                    <button onclick="convertToMarkdown(true)" title="Extract main content with Defuddle, then convert to Markdown">Convert with Defuddle</button>
+                    <button onclick="convertToMarkdown(false)" title="Convert HTML to Markdown directly without content extraction">Convert with Turndown</button>
+                </div>
             </div>
 
             <div class="column">
@@ -190,45 +205,85 @@
             }, 1500);
         }
 
-        async function fetchAndConvert() {
-            const button = document.querySelector('button[onclick="fetchAndConvert()"]');
+        async function fetchMarkdown() {
+            const button = document.querySelector('button[onclick="fetchMarkdown()"]');
             button.disabled = true;
             button.textContent = 'Fetching...';
 
             const url = document.getElementById('urlInput').value;
-            const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
-            const html = await response.text();
-            document.getElementById('htmlInput').value = html;
+            try {
+                const signal = AbortSignal.timeout(15000);
+                const response = await fetch('https://r.jina.ai/' + url, { signal });
+                const markdown = await response.text();
+
+                const markdownOutput = document.getElementById('markdownOutput');
+                const highlighted = hljs.highlight(markdown, { language: 'markdown' }).value;
+                markdownOutput.innerHTML = highlighted;
+            } catch (e) {
+                alert('Fetch failed: ' + e.message);
+            }
 
             button.disabled = false;
-            button.textContent = 'Fetch & Convert';
-
-            convertToMarkdown();
+            button.textContent = 'Fetch Markdown';
         }
 
-        function convertToMarkdown() {
-            const button = document.querySelector('button[onclick="convertToMarkdown()"]');
+        async function fetchHTML() {
+            const button = document.querySelector('button[onclick="fetchHTML()"]');
             button.disabled = true;
-            button.textContent = 'Converting...';
+            button.textContent = 'Fetching...';
+
+            const url = document.getElementById('urlInput').value;
+            try {
+                const signal = AbortSignal.timeout(10000);
+                const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal });
+                const html = await response.text();
+                document.getElementById('htmlInput').value = html;
+            } catch (e) {
+                alert('Fetch failed: ' + e.message);
+            }
+
+            button.disabled = false;
+            button.textContent = 'Fetch';
+        }
+
+        function convertToMarkdown(useDefuddle) {
+            const buttons = document.querySelectorAll('.button-row button');
+            buttons.forEach(b => b.disabled = true);
 
             const htmlInput = document.getElementById('htmlInput').value;
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlInput, 'text/html');
-            const defuddle = new Defuddle(doc);
-            const result = defuddle.parse();
 
-            const turndownService = new TurndownService({
-                headingStyle: 'atx'
-            });
+            let markdown;
+            if (useDefuddle) {
+                const defuddle = new Defuddle(doc, { markdown: true, standardize: false });
+                const result = defuddle.parse();
 
-            const markdown = turndownService.turndown(result.content);
+                const url = document.getElementById('urlInput').value;
+                const frontmatterFields = [
+                    result.title       && `title: "${result.title}"`,
+                    url                && `source: "${url}"`,
+                    result.language    && `language: "${result.language}"`,
+                    result.description && `description: "${result.description}"`,
+                    result.wordCount   && `word_count: ${result.wordCount}`,
+                ].filter(Boolean);
+
+                const frontmatter = frontmatterFields.length
+                    ? `---\n${frontmatterFields.join('\n')}\n---\n\n`
+                    : '';
+                const title = result.title ? `# ${result.title}\n\n` : '';
+
+                markdown = frontmatter + title + result.content;
+            } else {
+                const turndownService = new TurndownService({ headingStyle: 'atx' });
+                markdown = turndownService.turndown(doc.body.innerHTML);
+            }
 
             const markdownOutput = document.getElementById('markdownOutput');
             const highlighted = hljs.highlight(markdown, { language: 'markdown' }).value;
             markdownOutput.innerHTML = highlighted;
 
-            button.disabled = false;
-            button.textContent = 'Convert to Markdown';
+            buttons.forEach(b => b.disabled = false);
         }
     </script>
 </body>
